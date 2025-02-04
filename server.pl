@@ -1,4 +1,5 @@
 :- use_module(library(http/thread_httpd)).
+:- use_module(library(http/http_unix_daemon)).
 :- use_module(library(http/http_dispatch)).
 :- use_module(library(http/http_json)).
 :- use_module(library(odbc)).
@@ -8,17 +9,19 @@
 
 :- http_handler(root(light_status), handle_light_status, []).
 :- http_handler(root(update_fact), handle_update_fact, []).
+:- http_handler(root(stop), stop, []).
 
 server(Port) :-
-    http_server(http_dispatch, [port(Port)]).
+    http_daemon([port(Port)]). % Вылетает с ошибкой, но при этом сервер запускается
+%   http_server(http_dispatch, [port(Port)]). % Работает без ошибок, но не слушает в фоновом режиме
 
 stop :-
     http_stop_server(8000, []).
 
 handle_light_status(_) :-
-    (should_turn_on_light -> 
+    (should_turn_on_light ->
         Reply = json([light_status=on])
-    ; 
+    ;
         Reply = json([light_status=off])
     ),
     reply_json(Reply).
