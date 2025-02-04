@@ -10,6 +10,7 @@
 :- http_handler(root(light_status), handle_light_status, []).
 :- http_handler(root(update_fact), handle_update_fact, []).
 :- http_handler(root(stop), stop, []).
+:- http_handler(root(command), handle_command, []).
 
 server(Port) :-
     http_daemon([port(Port)]). % Вылетает с ошибкой, но при этом сервер запускается
@@ -41,6 +42,26 @@ handle_update_fact(Request) :-
     ;
         reply_json(json([status=error, message="Missing key"]))
     ).
+
+handle_command(Request) :-
+    http_read_json_dict(Request, Dict),
+    (get_dict(code, Dict, Code) ->
+        term_to_atom(Term, Code),
+        (catch(execute_with_output(Term, Output), Error, fail) ->
+            reply_json(json([status=success, result=Output]))
+        ;
+            reply_json(json([status=error, message=Error]))
+        )
+    ;
+        reply_json(json([status=error, message="Missing key"]))
+    ).
+
+execute_with_output(Term, FinalOutput) :-
+    (   with_output_to(string(Output), (call(Term) -> true ; Output = "false"))
+    ->  true
+    ;   Output = "false"
+    ),
+    (Output = "" -> FinalOutput = "true" ; FinalOutput = Output).
 
 get_response_toggle(Function) :-
     (call(Function) ->
